@@ -1,0 +1,34 @@
+env:
+  global:
+    - CC_TEST_REPORTER_ID=3b0e4d8b3a4b07a96e712c09be65b8e858ab540a6c14bbd87151ad1c9fc8b8e0
+language: node_js
+addons:
+  mariadb: '10.0'
+services:
+  - mariadb
+
+jobs:
+  include:
+    - stage: test
+      node_js: '9'
+      os: linux
+      before_script:
+        - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+        - chmod +x ./cc-test-reporter
+        - npm run build || exit 1
+        - sleep 5
+        - ./cc-test-reporter before-build
+      after_success:
+        - 'cat ./coverage/lcov.info | coveralls'
+        - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+
+    - stage: platform-test
+      node_js: 'lts/carbon'
+      os: linux
+      before_script: sleep 10
+
+install:
+  - yarn install
+
+script:
+  - npm run test
