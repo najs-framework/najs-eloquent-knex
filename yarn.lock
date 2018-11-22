@@ -35,7 +35,7 @@
     array-from "^2.1.1"
     lodash.get "^4.4.2"
 
-"@types/bluebird@^3.5.25":
+"@types/bluebird@*", "@types/bluebird@^3.5.25":
   version "3.5.25"
   resolved "https://registry.yarnpkg.com/@types/bluebird/-/bluebird-3.5.25.tgz#59188b871208092e37767e4b3d80c3b3eaae43bd"
 
@@ -48,6 +48,13 @@
 "@types/jest@^21.1.8":
   version "21.1.10"
   resolved "https://registry.yarnpkg.com/@types/jest/-/jest-21.1.10.tgz#dcacb5217ddf997a090cc822bba219b4b2fd7984"
+
+"@types/knex@^0.15.1":
+  version "0.15.1"
+  resolved "https://registry.yarnpkg.com/@types/knex/-/knex-0.15.1.tgz#349a1c25d481b338549df2cf4fce685676092523"
+  dependencies:
+    "@types/bluebird" "*"
+    "@types/node" "*"
 
 "@types/lodash@^4.14.118":
   version "4.14.119"

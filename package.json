@@ -51,6 +51,7 @@
     "najs-binding": "^1.8.0"
   },
   "dependencies": {
+    "@types/knex": "^0.15.1",
     "knex": "^0.16.3",
     "lodash": "^4.17.11",
     "moment": "^2.22.2",
