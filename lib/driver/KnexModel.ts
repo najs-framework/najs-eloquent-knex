@@ -4,6 +4,8 @@ import * as Knex from 'knex'
 
 export class KnexModel extends Model {
   public id?: string
+  protected table?: string
+  protected connection?: string
 
   newQuery(): KnexQueryBuilderType<this>
   newQuery(cb: (queryBuilder: Knex.QueryBuilder) => any): KnexQueryBuilderType<this>
