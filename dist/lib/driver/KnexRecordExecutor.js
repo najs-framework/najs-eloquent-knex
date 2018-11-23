@@ -2,15 +2,19 @@
 /// <reference types="najs-eloquent" />
 Object.defineProperty(exports, "__esModule", { value: true });
 const najs_eloquent_1 = require("najs-eloquent");
-const DBFacade_1 = require("../facades/global/DBFacade");
-const helpers_1 = require("../utils/helpers");
+const KnexProviderFacade_1 = require("../facades/global/KnexProviderFacade");
 class KnexRecordExecutor extends najs_eloquent_1.NajsEloquent.Driver.RecordExecutorBase {
-    constructor(model, record, logger) {
+    constructor(model, record, tableName, connectionName, logger) {
         super(model, record, new najs_eloquent_1.NajsEloquent.QueryBuilder.Shared.DefaultConvention());
         this.logger = logger;
-        this.tableName = helpers_1.get_table_name(model);
-        this.connectionName = helpers_1.get_connection_name(model);
-        this.knex = DBFacade_1.DB.getConnection(this.connectionName);
+        this.tableName = tableName;
+        this.connectionName = connectionName;
+    }
+    getKnexQueryBuilder() {
+        if (typeof this.knex === 'undefined') {
+            this.knex = KnexProviderFacade_1.KnexProvider.createQueryBuilder(this.tableName, this.connectionName);
+        }
+        return this.knex;
     }
     async createRecord(action) {
         const data = this.record.toObject();
@@ -19,15 +23,16 @@ class KnexRecordExecutor extends najs_eloquent_1.NajsEloquent.Driver.RecordExecu
             .action(`${this.model.getModelName()}.${action}()`);
         return this.shouldExecute()
             ? new Promise((resolve, reject) => {
-                const query = this.knex.table(this.tableName);
+                const query = this.getKnexQueryBuilder();
                 query
+                    .table(this.tableName)
                     .insert(data)
                     .then(response => {
                     resolve(this.logger.sql(query.toQuery()).end(response));
                 })
                     .catch(reject);
             })
-            : this.logger.end({});
+            : this.logger.sql(undefined).end({});
     }
     async updateRecord(action) {
         const name = this.convention.formatFieldName(this.model.getPrimaryKeyName());
@@ -39,15 +44,17 @@ class KnexRecordExecutor extends najs_eloquent_1.NajsEloquent.Driver.RecordExecu
             .action(`${this.model.getModelName()}.${action}()`);
         return this.shouldExecute()
             ? new Promise((resolve, reject) => {
-                const query = this.knex.table(this.tableName).where(name, value);
+                const query = this.getKnexQueryBuilder();
                 query
+                    .table(this.tableName)
+                    .where(name, value)
                     .update(data)
                     .then(response => {
                     resolve(this.logger.sql(query.toQuery()).end(response));
                 })
                     .catch(reject);
             })
-            : this.logger.end({});
+            : this.logger.sql(undefined).end({});
     }
     async hardDeleteRecord() {
         const name = this.convention.formatFieldName(this.model.getPrimaryKeyName());
@@ -58,15 +65,17 @@ class KnexRecordExecutor extends najs_eloquent_1.NajsEloquent.Driver.RecordExecu
             .action(`${this.model.getModelName()}.hardDelete()`);
         return this.shouldExecute()
             ? new Promise((resolve, reject) => {
-                const query = this.knex.table(this.tableName).where(name, value);
+                const query = this.getKnexQueryBuilder();
                 query
+                    .table(this.tableName)
+                    .where(name, value)
                     .delete()
                     .then(response => {
                     resolve(this.logger.sql(query.toQuery()).end(response));
                 })
                     .catch(reject);
             })
-            : this.logger.end({});
+            : this.logger.sql(undefined).end({});
     }
     getModifiedData() {
         return this.record.getModified().reduce((data, name) => {
@@ -75,7 +84,7 @@ class KnexRecordExecutor extends najs_eloquent_1.NajsEloquent.Driver.RecordExecu
         }, {});
     }
     startLog() {
-        return this.logger.raw(`DB.getConnection(${this.connectionName}).table(${this.tableName})`);
+        return this.logger.raw(`KnexProvider.createQueryBuilder("${this.tableName}", "${this.connectionName}")`);
     }
 }
 exports.KnexRecordExecutor = KnexRecordExecutor;

@@ -9,7 +9,7 @@ export class KnexQueryLog extends NajsEloquentLib.Driver.QueryLogBase<IKnexQuery
     return this.getEmptyData()
   }
 
-  sql(sql: string): this {
+  sql(sql?: string): this {
     this.data.sql = sql
 
     return this

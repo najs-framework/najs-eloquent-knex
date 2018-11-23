@@ -1,16 +1,16 @@
 declare namespace Najs.Contracts.Eloquent {
     interface KnexProvider<Knex, QueryBuilder, Config extends object> extends Najs.Contracts.Autoload {
         /**
-         * Set config by name
-         * @param {string} name
+         * Set config by connection name
+         * @param {string} connectionName
          * @param {object} config
          */
-        setConfig(name: string, config: Config): this;
+        setConfig(connectionName: string, config: Config): this;
         /**
-         * Set config by name
-         * @param {string} name
+         * Set config by connection name
+         * @param {string} connectionName
          */
-        getConfig(name: string): Config;
+        getConfig(connectionName: string): Config;
         /**
          * Set default config for knex instance
          */
@@ -26,30 +26,30 @@ declare namespace Najs.Contracts.Eloquent {
         /**
          * Create an knex cached instance
          */
-        create(name: string): Knex;
+        create(connectionName: string): Knex;
         /**
          * Create an knex instance with config
          */
         create(config: Config): Knex;
         /**
-         * Set config to name and create knex cached instance
+         * Set config to connection name and create knex cached instance
          */
-        create(name: string, config: Config): Knex;
+        create(connectionName: string, config: Config): Knex;
         /**
          * Create query builder from default knex instance
          */
         createQueryBuilder(table: string): QueryBuilder;
         /**
-         * Create query builder from knex cached instance by name
+         * Create query builder from knex cached instance by connection name
          */
-        createQueryBuilder(table: string, name: string): QueryBuilder;
+        createQueryBuilder(table: string, connectionName: string): QueryBuilder;
         /**
          * Create query builder from not cached knex instance with config
          */
         createQueryBuilder(table: string, config: Config): QueryBuilder;
         /**
-         * Set config to name and create query builder from knex cached instance
+         * Set config to connection name and create query builder from knex cached instance
          */
-        createQueryBuilder(table: string, name: string, config: Config): QueryBuilder;
+        createQueryBuilder(table: string, connectionName: string, config: Config): QueryBuilder;
     }
 }

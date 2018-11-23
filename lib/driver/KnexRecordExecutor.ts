@@ -1,24 +1,35 @@
 /// <reference types="najs-eloquent" />
 
 import Model = NajsEloquent.Model.IModel
+import * as Knex from 'knex'
 import { NajsEloquent as NajsEloquentLib } from 'najs-eloquent'
 import { KnexQueryLog } from './KnexQueryLog'
-import { DB } from '../facades/global/DBFacade'
-import { KnexWrapper } from '../wrappers/KnexWrapper'
-import { get_table_name, get_connection_name } from '../utils/helpers'
+import { KnexProvider } from '../facades/global/KnexProviderFacade'
 
 export class KnexRecordExecutor extends NajsEloquentLib.Driver.RecordExecutorBase {
   protected logger: KnexQueryLog
-  protected knex: KnexWrapper
+  protected knex?: Knex.QueryBuilder
   protected tableName: string
   protected connectionName: string
 
-  constructor(model: Model, record: NajsEloquentLib.Driver.Record, logger: KnexQueryLog) {
+  constructor(
+    model: Model,
+    record: NajsEloquentLib.Driver.Record,
+    tableName: string,
+    connectionName: string,
+    logger: KnexQueryLog
+  ) {
     super(model, record, new NajsEloquentLib.QueryBuilder.Shared.DefaultConvention())
     this.logger = logger
-    this.tableName = get_table_name(model)
-    this.connectionName = get_connection_name(model)
-    this.knex = DB.getConnection(this.connectionName)
+    this.tableName = tableName
+    this.connectionName = connectionName
+  }
+
+  getKnexQueryBuilder() {
+    if (typeof this.knex === 'undefined') {
+      this.knex = KnexProvider.createQueryBuilder(this.tableName, this.connectionName)
+    }
+    return this.knex
   }
 
   async createRecord<R = any>(action: string): Promise<R> {
@@ -29,15 +40,16 @@ export class KnexRecordExecutor extends NajsEloquentLib.Driver.RecordExecutorBas
 
     return this.shouldExecute()
       ? new Promise((resolve, reject) => {
-          const query = this.knex.table(this.tableName)
+          const query = this.getKnexQueryBuilder()
           query
+            .table(this.tableName)
             .insert(data)
             .then(response => {
               resolve(this.logger.sql(query.toQuery()).end(response))
             })
             .catch(reject)
         })
-      : this.logger.end({})
+      : this.logger.sql(undefined).end({})
   }
 
   async updateRecord<R = any>(action: string): Promise<R> {
@@ -52,15 +64,17 @@ export class KnexRecordExecutor extends NajsEloquentLib.Driver.RecordExecutorBas
 
     return this.shouldExecute()
       ? new Promise((resolve, reject) => {
-          const query = this.knex.table(this.tableName).where(name, value)
+          const query = this.getKnexQueryBuilder()
           query
+            .table(this.tableName)
+            .where(name, value)
             .update(data)
             .then(response => {
               resolve(this.logger.sql(query.toQuery()).end(response))
             })
             .catch(reject)
         })
-      : this.logger.end({})
+      : this.logger.sql(undefined).end({})
   }
 
   async hardDeleteRecord<R = any>(): Promise<R> {
@@ -74,15 +88,17 @@ export class KnexRecordExecutor extends NajsEloquentLib.Driver.RecordExecutorBas
 
     return this.shouldExecute()
       ? new Promise((resolve, reject) => {
-          const query = this.knex.table(this.tableName).where(name, value)
+          const query = this.getKnexQueryBuilder()
           query
+            .table(this.tableName)
+            .where(name, value)
             .delete()
             .then(response => {
               resolve(this.logger.sql(query.toQuery()).end(response))
             })
             .catch(reject)
         })
-      : this.logger.end({})
+      : this.logger.sql(undefined).end({})
   }
 
   getModifiedData() {
@@ -93,6 +109,6 @@ export class KnexRecordExecutor extends NajsEloquentLib.Driver.RecordExecutorBas
   }
 
   startLog(): KnexQueryLog {
-    return this.logger.raw(`DB.getConnection(${this.connectionName}).table(${this.tableName})`)
+    return this.logger.raw(`KnexProvider.createQueryBuilder("${this.tableName}", "${this.connectionName}")`)
   }
 }
