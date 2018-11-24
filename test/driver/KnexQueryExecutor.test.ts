@@ -275,9 +275,163 @@ describe('MongodbRecordExecutor', function() {
   })
 
   describe('.first()', function() {
-    it('should work', async function() {
+    it('finds first document of collection and return an instance of Eloquent<T>', async function() {
       const handler = makeQueryBuilderHandler('users')
-      await handler.getQueryExecutor().first()
+      const result = await handler.getQueryExecutor().first()
+
+      expect_query_log(
+        {
+          sql: 'select * from `users` limit 1',
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)',
+          action: 'first'
+        },
+        result
+      )
+      expect_match_user(result, dataset[0])
+    })
+
+    it('finds first document of collection and return an instance of Eloquent<T>', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler).orderBy('id', 'desc')
+      const result = await handler.getQueryExecutor().first()
+
+      expect_query_log(
+        {
+          sql: 'select * from `users` order by `id` desc limit 1',
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)',
+          action: 'first'
+        },
+        result
+      )
+      expect_match_user(result, dataset[6])
+    })
+
+    it('returns null if no result', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler).where('first_name', 'no-one')
+      const result = await handler.getQueryExecutor().first()
+
+      expect_query_log(
+        {
+          sql: "select * from `users` where `first_name` = 'no-one' limit 1",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)',
+          action: 'first'
+        },
+        result
+      )
+      expect(result).toBeNull()
+    })
+
+    it('can find data by query builder, case 1', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler).where('age', 1000)
+      const result = await handler.getQueryExecutor().first()
+
+      expect_query_log(
+        {
+          sql: 'select * from `users` where `age` = 1000 limit 1',
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)',
+          action: 'first'
+        },
+        result
+      )
+      expect_match_user(result, dataset[3])
+    })
+
+    it('can find data by query builder, case 2', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler)
+        .where('age', 40)
+        .orWhere('first_name', 'jane')
+      const result = await handler.getQueryExecutor().first()
+
+      expect_query_log(
+        {
+          sql: "select * from `users` where `age` = 40 or `first_name` = 'jane' limit 1",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)',
+          action: 'first'
+        },
+        result
+      )
+      expect_match_user(result, dataset[1])
+    })
+
+    it('can find data by query builder, case 3', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler)
+        .where('first_name', 'tony')
+        .where('last_name', 'stewart')
+      const result = await handler.getQueryExecutor().first()
+
+      expect_query_log(
+        {
+          sql: "select * from `users` where `first_name` = 'tony' and `last_name` = 'stewart' limit 1",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)',
+          action: 'first'
+        },
+        result
+      )
+      expect_match_user(result, dataset[5])
+    })
+
+    // it('can find data by .native() before using query functions of query builder', async function() {
+    //   const handler = makeQueryBuilderHandler('users')
+    //   const result = await makeQueryBuilder(handler)
+    //     .native(function(collection) {
+    //       return collection.findOne({
+    //         first_name: 'tony'
+    //       })
+    //     })
+    //     .execute()
+
+    //   expect_match_user(result, dataset[2])
+    // })
+
+    // it('can find data by native() after using query functions of query builder', async function() {
+    //   const handler = makeQueryBuilderHandler('users')
+    //   const result = await makeQueryBuilder(handler)
+    //     .where('age', 40)
+    //     .orWhere('age', 1000)
+    //     .native(function(collection, conditions) {
+    //       return collection.findOne(conditions, { sort: [['last_name', -1]] })
+    //     })
+    //     .execute()
+    //   expect_match_user(result, dataset[5])
+    // })
+
+    // it('can find data by native() and modified after using query functions of query builder', async function() {
+    //   const handler = makeQueryBuilderHandler('users')
+    //   const result = await await makeQueryBuilder(handler)
+    //     .where('age', 40)
+    //     .orWhere('age', 1000)
+    //     .native(function(collection) {
+    //       return collection.findOne({
+    //         first_name: 'thor'
+    //       })
+    //     })
+    //     .execute()
+    //   expect_match_user(result, dataset[3])
+    // })
+
+    it('returns an undefined if executeMode is disabled', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler)
+        .where('age', 40)
+        .orWhere('first_name', 'jane')
+      const result = await handler
+        .getQueryExecutor()
+        .setExecuteMode('disabled')
+        .first()
+
+      expect_query_log(
+        {
+          sql: undefined,
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)',
+          action: 'first'
+        },
+        result
+      )
+      expect(result).toBeUndefined()
     })
   })
 

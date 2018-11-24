@@ -22,7 +22,19 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
         });
     }
     async first() {
-        return undefined;
+        this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().limit(1).then(...)').action('first');
+        if (!this.shouldExecute()) {
+            return this.logger.sql(undefined).end(undefined);
+        }
+        return new Promise(resolve => {
+            const query = this.queryHandler.getKnexQueryBuilder().limit(1);
+            query.then(result => {
+                // tslint:disable-next-line
+                const row = result && result.length !== 0 ? result[0] : null;
+                this.logger.sql(query.toQuery()).end(row);
+                resolve(row);
+            });
+        });
     }
     async count() {
         return 0;
