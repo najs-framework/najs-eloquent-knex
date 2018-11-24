@@ -1,8 +1,11 @@
 import * as Knex from 'knex'
+import { make } from 'najs-binding'
 import { KnexBasicQueryWrapper } from '../wrappers/KnexBasicQueryWrapper'
 import { NajsEloquent as NajsEloquentLib } from 'najs-eloquent'
 import { KnexProvider } from '../facades/global/KnexProviderFacade'
 import { KnexConditionQueryWrapper } from '../wrappers/KnexConditionQueryWrapper'
+import { KnexExecutorFactory } from './KnexExecutorFactory'
+import { get_connection_name, get_table_name } from '../utils/helpers'
 
 export class KnexQueryBuilderHandler extends NajsEloquentLib.QueryBuilder.QueryBuilderHandlerBase {
   protected knexQuery?: Knex.QueryBuilder
@@ -11,19 +14,16 @@ export class KnexQueryBuilderHandler extends NajsEloquentLib.QueryBuilder.QueryB
   protected convention: NajsEloquentLib.QueryBuilder.Shared.DefaultConvention
 
   constructor(model: NajsEloquent.Model.IModel) {
-    super(model, {} as any)
+    super(model, make<KnexExecutorFactory>(KnexExecutorFactory.className))
     this.convention = new NajsEloquentLib.QueryBuilder.Shared.DefaultConvention()
   }
 
   getTableName() {
-    return this.model.getRecordName()
+    return get_table_name(this.model)
   }
 
   getConnectionName() {
-    return this.model
-      .getDriver()
-      .getSettingFeature()
-      .getSettingProperty(this.model, 'connection', 'default')
+    return get_connection_name(this.model)
   }
 
   getKnexQueryBuilder() {

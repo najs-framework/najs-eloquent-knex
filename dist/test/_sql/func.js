@@ -12,8 +12,8 @@ function makeQueryBuilder(table) {
             return {
                 getSettingFeature() {
                     return {
-                        getSettingProperty() {
-                            return 'default';
+                        getSettingProperty(model, property) {
+                            return property === 'table' ? 'table' : 'default';
                         }
                     };
                 }

@@ -12,8 +12,8 @@ export function makeQueryBuilder(table: string): KnexQueryBuilderType<any> {
       return {
         getSettingFeature() {
           return {
-            getSettingProperty() {
-              return 'default'
+            getSettingProperty(model: any, property: any) {
+              return property === 'table' ? 'table' : 'default'
             }
           }
         }

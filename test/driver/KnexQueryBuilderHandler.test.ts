@@ -5,6 +5,7 @@ import { KnexQueryBuilderHandler } from '../../lib/driver/KnexQueryBuilderHandle
 import { NajsEloquent as NajsEloquentLib } from 'najs-eloquent'
 import { KnexBasicQueryWrapper } from '../../lib/wrappers/KnexBasicQueryWrapper'
 import { KnexConditionQueryWrapper } from '../../lib/wrappers/KnexConditionQueryWrapper'
+import * as Helpers from '../../lib/utils/helpers'
 
 describe('KnexQueryBuilderHandler', function() {
   describe('constructor()', function() {
@@ -16,14 +17,13 @@ describe('KnexQueryBuilderHandler', function() {
   })
 
   describe('.getTableName()', function() {
-    it('returns model.getRecordName()', function() {
-      const model: any = {
-        getRecordName() {
-          return 'anything'
-        }
-      }
+    it('calls and returns Helpers.get_table_name()', function() {
+      const model: any = {}
+      const stub = Sinon.stub(Helpers, 'get_table_name')
+      stub.returns('anything')
       const handler = new KnexQueryBuilderHandler(model)
       expect(handler.getTableName()).toEqual('anything')
+      stub.restore()
     })
   })
 

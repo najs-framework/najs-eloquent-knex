@@ -7,6 +7,7 @@ const KnexQueryBuilderHandler_1 = require("../../lib/driver/KnexQueryBuilderHand
 const najs_eloquent_1 = require("najs-eloquent");
 const KnexBasicQueryWrapper_1 = require("../../lib/wrappers/KnexBasicQueryWrapper");
 const KnexConditionQueryWrapper_1 = require("../../lib/wrappers/KnexConditionQueryWrapper");
+const Helpers = require("../../lib/utils/helpers");
 describe('KnexQueryBuilderHandler', function () {
     describe('constructor()', function () {
         it('creates an instance of DefaultConvention then assigns to property "convention"', function () {
@@ -16,14 +17,13 @@ describe('KnexQueryBuilderHandler', function () {
         });
     });
     describe('.getTableName()', function () {
-        it('returns model.getRecordName()', function () {
-            const model = {
-                getRecordName() {
-                    return 'anything';
-                }
-            };
+        it('calls and returns Helpers.get_table_name()', function () {
+            const model = {};
+            const stub = Sinon.stub(Helpers, 'get_table_name');
+            stub.returns('anything');
             const handler = new KnexQueryBuilderHandler_1.KnexQueryBuilderHandler(model);
             expect(handler.getTableName()).toEqual('anything');
+            stub.restore();
         });
     });
     describe('.getConnectionName()', function () {
