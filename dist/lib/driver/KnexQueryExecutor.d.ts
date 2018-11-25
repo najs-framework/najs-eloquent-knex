@@ -12,6 +12,7 @@ export declare class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBa
     get(): Promise<object[]>;
     first(): Promise<object | null | undefined>;
     count(): Promise<number>;
+    readCountOutput(output: any): any;
     update(data: Object): Promise<any>;
     delete(): Promise<any>;
     restore(): Promise<any>;

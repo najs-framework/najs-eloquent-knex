@@ -3,6 +3,7 @@ import { QueryLog, NajsEloquent as NajsEloquentLib } from 'najs-eloquent'
 import { init_knex, knex_run_sql } from '../util'
 import { KnexQueryBuilderHandler } from '../../lib/driver/KnexQueryBuilderHandler'
 import { KnexQueryBuilder } from '../../lib/driver/KnexQueryBuilder'
+import { KnexQueryExecutor } from '../../lib/driver/KnexQueryExecutor'
 
 describe('MongodbRecordExecutor', function() {
   const dataset = [
@@ -436,9 +437,150 @@ describe('MongodbRecordExecutor', function() {
   })
 
   describe('.count()', function() {
-    it('should work', async function() {
+    it('counts all data of collection and returns a Number', async function() {
       const handler = makeQueryBuilderHandler('users')
-      await handler.getQueryExecutor().count()
+      const result = await handler.getQueryExecutor().count()
+
+      expect_query_log(
+        {
+          sql: 'select count(*) from `users`',
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)',
+          action: 'count'
+        },
+        result
+      )
+      expect(result).toEqual(7)
+    })
+
+    it('returns 0 if no result', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler).where('first_name', 'no-one')
+      const result = await handler.getQueryExecutor().count()
+
+      expect_query_log(
+        {
+          sql: "select count(*) from `users` where `first_name` = 'no-one'",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)',
+          action: 'count'
+        },
+        result
+      )
+      expect(result).toEqual(0)
+    })
+
+    it('overrides select even .select was used', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler).select('abc', 'def')
+      const result = await handler.getQueryExecutor().count()
+
+      expect_query_log(
+        {
+          sql: 'select count(*) from `users`',
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)',
+          action: 'count'
+        },
+        result
+      )
+      expect(result).toEqual(7)
+    })
+
+    it('overrides ordering even .orderBy was used', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler).orderBy('abc')
+      const result = await handler.getQueryExecutor().count()
+
+      expect_query_log(
+        {
+          sql: 'select count(*) from `users`',
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)',
+          action: 'count'
+        },
+        result
+      )
+      expect(result).toEqual(7)
+    })
+
+    it('can count items by query builder, case 1', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler)
+        .where('age', 18)
+        .orWhere('first_name', 'tony')
+      const result = await handler.getQueryExecutor().count()
+
+      expect_query_log(
+        {
+          sql: "select count(*) from `users` where `age` = 18 or `first_name` = 'tony'",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)',
+          action: 'count'
+        },
+        result
+      )
+      expect(result).toEqual(2)
+    })
+
+    it('can count items by query builder, case 2', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler)
+        .where('age', 1000)
+        .orWhere('first_name', 'captain')
+        .orderBy('last_name')
+        .limit(10)
+      const result = await handler.getQueryExecutor().count()
+
+      expect_query_log(
+        {
+          sql: "select count(*) from `users` where `age` = 1000 or `first_name` = 'captain' limit 10",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)',
+          action: 'count'
+        },
+        result
+      )
+      expect(result).toEqual(2)
+    })
+
+    it('returns 0 if executeMode is disabled', async function() {
+      const handler = makeQueryBuilderHandler('users')
+      makeQueryBuilder(handler)
+        .where('age', 1000)
+        .orWhere('first_name', 'captain')
+        .orderBy('last_name')
+        .limit(10)
+      const result = await handler
+        .getQueryExecutor()
+        .setExecuteMode('disabled')
+        .count()
+
+      expect_query_log(
+        {
+          sql: undefined,
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)',
+          action: 'count'
+        },
+        result
+      )
+      expect(result).toEqual(0)
+    })
+  })
+
+  describe('.readCountOutput()', function() {
+    it('returns 0 if output is undefined', function() {
+      const handler = makeQueryBuilderHandler('users')
+      expect((handler.getQueryExecutor() as KnexQueryExecutor).readCountOutput(undefined)).toEqual(0)
+    })
+
+    it('returns 0 if output is empty', function() {
+      const handler = makeQueryBuilderHandler('users')
+      expect((handler.getQueryExecutor() as KnexQueryExecutor).readCountOutput([])).toEqual(0)
+    })
+
+    it('returns 0 if output is not empty but the first row not contains "count(*)"', function() {
+      const handler = makeQueryBuilderHandler('users')
+      expect((handler.getQueryExecutor() as KnexQueryExecutor).readCountOutput([{}])).toEqual(0)
+    })
+
+    it('returns value of firstRow["count(*)"]', function() {
+      const handler = makeQueryBuilderHandler('users')
+      expect((handler.getQueryExecutor() as KnexQueryExecutor).readCountOutput([{ 'count(*)': 'any' }])).toEqual('any')
     })
   })
 

@@ -52,7 +52,26 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
   }
 
   async count(): Promise<number> {
-    return 0
+    this.logger
+      .raw('KnexQueryBuilderHandler.getKnexQueryBuilder().clearSelect()._clearGrouping("order").count().then(...)')
+      .action('count')
+    if (!this.shouldExecute()) {
+      return this.logger.sql(undefined).end(0)
+    }
+
+    return new Promise(resolve => {
+      const query = this.queryHandler.getKnexQueryBuilder()
+      query.clearSelect()['_clearGrouping']('order')
+      query.count().then(output => {
+        resolve(this.logger.sql(query.toQuery()).end(this.readCountOutput(output)))
+      })
+    }) as any
+  }
+
+  readCountOutput(output: any) {
+    const row = output && output.length !== 0 ? output[0] : {}
+    const result = typeof row['count(*)'] !== 'undefined' ? row['count(*)'] : 0
+    return result
   }
 
   async update(data: Object): Promise<any> {}
