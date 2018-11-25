@@ -1,7 +1,7 @@
 /// <reference types="najs-eloquent" />
 
 import * as Knex from 'knex'
-import { NajsEloquent as NajsEloquentLib } from 'najs-eloquent'
+import { MomentProvider, NajsEloquent as NajsEloquentLib } from 'najs-eloquent'
 import { KnexQueryLog } from './KnexQueryLog'
 import { KnexQueryBuilderHandler } from './KnexQueryBuilderHandler'
 
@@ -74,7 +74,23 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     return result
   }
 
-  async update(data: Object): Promise<any> {}
+  async update(data: Object): Promise<any> {
+    if (this.queryHandler.hasTimestamps()) {
+      data[this.queryHandler.getTimestampsSetting().updatedAt] = MomentProvider.make().toDate()
+    }
+
+    this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().update(', data, ').then(...)').action('update')
+    if (!this.shouldExecute()) {
+      return this.logger.sql(undefined).end(0)
+    }
+
+    return new Promise(resolve => {
+      const query = this.queryHandler.getKnexQueryBuilder()
+      query.update(data).then(output => {
+        resolve(this.logger.sql(query.toQuery()).end(output))
+      })
+    }) as any
+  }
 
   async delete(): Promise<any> {}
 

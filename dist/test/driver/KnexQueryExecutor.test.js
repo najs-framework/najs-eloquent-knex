@@ -450,9 +450,166 @@ describe('MongodbRecordExecutor', function () {
         });
     });
     describe('.update()', function () {
-        it('should work', async function () {
+        it('can update data of table, returns update result of knex', async function () {
+            let handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).where('first_name', 'peter');
+            const result = await handler.getQueryExecutor().update({ age: 19 });
+            expect_query_log({
+                sql: "update `users` set `age` = 19 where `first_name` = 'peter'",
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"age":19}).then(...)',
+                action: 'update'
+            }, result);
+            expect(result).toEqual(1);
+            handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).where('first_name', 'peter');
+            const updatedResult = await handler.getQueryExecutor().first();
+            expect_match_user(updatedResult, Object.assign({}, dataset[6], { age: 19 }));
+        });
+        it('returns empty update result if no row matched', async function () {
             const handler = makeQueryBuilderHandler('users');
-            await handler.getQueryExecutor().update({});
+            makeQueryBuilder(handler).where('first_name', 'no-one');
+            const result = await handler.getQueryExecutor().update({ age: 19 });
+            expect_query_log({
+                sql: "update `users` set `age` = 19 where `first_name` = 'no-one'",
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"age":19}).then(...)',
+                action: 'update'
+            }, result);
+            expect(result).toEqual(0);
+        });
+        it('can update data by query builder, case 1', async function () {
+            let handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).where('age', 1000);
+            const result = await handler.getQueryExecutor().update({ age: 1001 });
+            expect_query_log({
+                sql: 'update `users` set `age` = 1001 where `age` = 1000',
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"age":1001}).then(...)',
+                action: 'update'
+            }, result);
+            expect(result).toEqual(1);
+            handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).where('first_name', 'thor');
+            const updatedResult = await handler.getQueryExecutor().first();
+            expect_match_user(updatedResult, Object.assign({}, dataset[3], { age: 1001 }));
+        });
+        it('can update data by query builder, case 2: multiple documents', async function () {
+            let handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).where('first_name', 'tony');
+            const result = await handler.getQueryExecutor().update({ age: 41 });
+            expect_query_log({
+                sql: "update `users` set `age` = 41 where `first_name` = 'tony'",
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"age":41}).then(...)',
+                action: 'update'
+            }, result);
+            expect(result).toEqual(2);
+            handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).where('first_name', 'tony');
+            const updatedResults = await handler.getQueryExecutor().get();
+            expect_match_user(updatedResults[0], Object.assign({}, dataset[2], { age: 41 }));
+            expect_match_user(updatedResults[1], Object.assign({}, dataset[5], { age: 41 }));
+        });
+        it('can update data by query builder, case 3', async function () {
+            let handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const result = await handler.getQueryExecutor().update({ age: 42 });
+            expect_query_log({
+                sql: "update `users` set `age` = 42 where `first_name` = 'tony' and `last_name` = 'stewart'",
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"age":42}).then(...)',
+                action: 'update'
+            }, result);
+            expect(result).toEqual(1);
+            handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const updatedResult = await handler.getQueryExecutor().first();
+            expect_match_user(updatedResult, Object.assign({}, dataset[5], { age: 42 }));
+        });
+        it('auto add updatedAt field to $set if timestamps options is on', async function () {
+            const now = new Date(1988, 4, 16);
+            najs_eloquent_1.MomentProvider.setNow(() => now);
+            function makeHandler() {
+                return new KnexQueryBuilderHandler_1.KnexQueryBuilderHandler({
+                    getDriver() {
+                        return {
+                            getSettingFeature() {
+                                return {
+                                    getSettingProperty(any, property) {
+                                        return property === 'table' ? 'users' : 'default';
+                                    }
+                                };
+                            },
+                            getSoftDeletesFeature() {
+                                return {
+                                    hasSoftDeletes() {
+                                        return false;
+                                    }
+                                };
+                            },
+                            getTimestampsFeature() {
+                                return {
+                                    hasTimestamps() {
+                                        return true;
+                                    },
+                                    getTimestampsSetting() {
+                                        return { createdAt: 'created_at', updatedAt: 'updated_at' };
+                                    }
+                                };
+                            }
+                        };
+                    },
+                    getRecordName() {
+                        return 'users';
+                    }
+                });
+            }
+            let handler = makeHandler();
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const result = await handler.getQueryExecutor().update({ age: 43 });
+            expect(result).toEqual(1);
+            handler = makeHandler();
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const updatedResult = await handler.getQueryExecutor().first();
+            expect_match_user(updatedResult, Object.assign({}, dataset[5], { age: 43, updated_at: now }));
+            handler = makeHandler();
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const result2 = await handler.getQueryExecutor().update({ age: 44 });
+            expect(result2).toEqual(1);
+            handler = makeHandler();
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const updatedResult2 = await handler.getQueryExecutor().first();
+            expect_match_user(updatedResult2, Object.assign({}, dataset[5], { age: 44, updated_at: now }));
+        });
+        it('returns 0 if executeMode is disabled', async function () {
+            let handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const result = await handler
+                .getQueryExecutor()
+                .setExecuteMode('disabled')
+                .update({ age: 0 });
+            expect_query_log({
+                sql: undefined,
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"age":0}).then(...)',
+                action: 'update'
+            }, result);
+            expect(result).toEqual(0);
+            handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .where('last_name', 'stewart');
+            const updatedResult = await handler.getQueryExecutor().first();
+            expect_match_user(updatedResult, Object.assign({}, dataset[5], { age: 44 }));
         });
     });
     describe('.delete()', function () {
