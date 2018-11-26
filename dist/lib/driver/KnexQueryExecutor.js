@@ -71,7 +71,32 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
             });
         });
     }
-    async delete() { }
+    async delete() {
+        if (!this.queryHandler.isUsed()) {
+            return 0;
+        }
+        this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)').action('delete');
+        const query = this.queryHandler.getKnexQueryBuilder();
+        if (!this.hasAnyWhereStatement(query)) {
+            return 0;
+        }
+        if (!this.shouldExecute()) {
+            return this.logger.sql(undefined).end(0);
+        }
+        return new Promise(resolve => {
+            query.delete().then(output => {
+                resolve(this.logger.sql(query.toQuery()).end(output));
+            });
+        });
+    }
+    hasAnyWhereStatement(query) {
+        for (const statement of query['_statements']) {
+            if (statement['grouping'] === 'where') {
+                return true;
+            }
+        }
+        return false;
+    }
     async restore() { }
     async execute() { }
 }

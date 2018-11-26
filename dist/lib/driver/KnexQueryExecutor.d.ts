@@ -15,6 +15,7 @@ export declare class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBa
     readCountOutput(output: any): any;
     update(data: Object): Promise<any>;
     delete(): Promise<any>;
+    hasAnyWhereStatement(query: any): boolean;
     restore(): Promise<any>;
     execute(): Promise<any>;
 }

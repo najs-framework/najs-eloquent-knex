@@ -92,7 +92,36 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     }) as any
   }
 
-  async delete(): Promise<any> {}
+  async delete(): Promise<any> {
+    if (!this.queryHandler.isUsed()) {
+      return 0
+    }
+
+    this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)').action('delete')
+    const query = this.queryHandler.getKnexQueryBuilder()
+    if (!this.hasAnyWhereStatement(query)) {
+      return 0
+    }
+
+    if (!this.shouldExecute()) {
+      return this.logger.sql(undefined).end(0)
+    }
+
+    return new Promise(resolve => {
+      query.delete().then(output => {
+        resolve(this.logger.sql(query.toQuery()).end(output))
+      })
+    }) as any
+  }
+
+  hasAnyWhereStatement(query: any) {
+    for (const statement of query['_statements']) {
+      if (statement['grouping'] === 'where') {
+        return true
+      }
+    }
+    return false
+  }
 
   async restore(): Promise<any> {}
 

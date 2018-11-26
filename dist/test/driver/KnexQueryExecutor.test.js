@@ -613,10 +613,112 @@ describe('MongodbRecordExecutor', function () {
         });
     });
     describe('.delete()', function () {
-        it('should work', async function () {
+        it('can delete data of collection, returns delete result of mongodb', async function () {
             const handler = makeQueryBuilderHandler('users');
-            await handler.getQueryExecutor().delete();
+            makeQueryBuilder(handler).where('first_name', 'peter');
+            const result = await handler.getQueryExecutor().delete();
+            expect_query_log({
+                sql: "delete from `users` where `first_name` = 'peter'",
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)',
+                action: 'delete'
+            }, result);
+            expect(result).toEqual(1);
+            const count = await makeQueryBuilderHandler('users')
+                .getQueryExecutor()
+                .count();
+            expect(count).toEqual(6);
         });
+        it('returns 0 if executeMode is disabled', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler)
+                .where('first_name', 'john')
+                .where('last_name', 'doe');
+            const result = await handler
+                .getQueryExecutor()
+                .setExecuteMode('disabled')
+                .delete();
+            expect_query_log({
+                sql: undefined,
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)'
+            }, result);
+            expect(result).toEqual(0);
+            const count = await makeQueryBuilderHandler('users')
+                .getQueryExecutor()
+                .count();
+            expect(count).toEqual(6);
+        });
+        it('can delete data by query builder, case 1', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).where('age', 1001);
+            const result = await handler.getQueryExecutor().delete();
+            expect_query_log({
+                sql: 'delete from `users` where `age` = 1001',
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)',
+                action: 'delete'
+            }, result);
+            expect(result).toEqual(1);
+            const count = await makeQueryBuilderHandler('users')
+                .getQueryExecutor()
+                .count();
+            expect(count).toEqual(5);
+        });
+        it('can delete data by query builder, case 2: multiple documents', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler)
+                .where('first_name', 'tony')
+                .orWhere('first_name', 'jane');
+            const result = await handler.getQueryExecutor().delete();
+            expect_query_log({
+                sql: "delete from `users` where `first_name` = 'tony' or `first_name` = 'jane'",
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)',
+                action: 'delete'
+            }, result);
+            expect(result).toEqual(3);
+            const count = await makeQueryBuilderHandler('users')
+                .getQueryExecutor()
+                .count();
+            expect(count).toEqual(2);
+        });
+        it('can delete data by query builder, case 3', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler)
+                .where('first_name', 'john')
+                .where('last_name', 'doe');
+            const result = await handler.getQueryExecutor().delete();
+            expect_query_log({
+                sql: "delete from `users` where `first_name` = 'john' and `last_name` = 'doe'",
+                raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)'
+            }, result);
+            expect(result).toEqual(1);
+            const count = await makeQueryBuilderHandler('users')
+                .getQueryExecutor()
+                .count();
+            expect(count).toEqual(1);
+        });
+        it('can not call delete without using any .where() statement', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            const result = await handler.getQueryExecutor().delete();
+            expect(result).toEqual(0);
+        });
+        it('can not call delete if query is empty', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            makeQueryBuilder(handler).select('any');
+            const result = await handler.getQueryExecutor().delete();
+            expect(result).toEqual(0);
+        });
+        // it('can delete by native() function', async function() {
+        //   const handler = makeQueryBuilderHandler('users')
+        //   const result = await makeQueryBuilder(handler)
+        //     .native(function(collection) {
+        //       return collection.deleteOne({})
+        //     })
+        //     .execute()
+        //   expect(result).toEqual({ n: 1, ok: 1 })
+        //   const count = await makeQueryBuilderHandler('users')
+        //     .getQueryExecutor()
+        //     .count()
+        //   expect(count).toEqual(0)
+        // })
     });
     describe('.restore()', function () {
         it('should work', async function () {
