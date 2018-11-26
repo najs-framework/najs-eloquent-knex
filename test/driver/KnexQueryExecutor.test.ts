@@ -937,9 +937,135 @@ describe('MongodbRecordExecutor', function() {
   })
 
   describe('.restore()', function() {
-    it('should work', async function() {
+    it('does nothing if Model do not support SoftDeletes', async function() {
       const handler = makeQueryBuilderHandler('users')
-      await handler.getQueryExecutor().restore()
+      makeQueryBuilder(handler).where('first_name', 'peter')
+      const result = await handler.getQueryExecutor().restore()
+
+      expect(QueryLog.pull()).toHaveLength(0)
+      expect(result).toEqual(0)
+    })
+
+    function makeHandler() {
+      return new KnexQueryBuilderHandler(<any>{
+        getDriver() {
+          return {
+            getSettingFeature() {
+              return {
+                getSettingProperty(any: any, property: any) {
+                  return property === 'table' ? 'roles' : 'default'
+                }
+              }
+            },
+            getSoftDeletesFeature() {
+              return {
+                hasSoftDeletes() {
+                  return true
+                },
+                getSoftDeletesSetting() {
+                  return { deletedAt: 'deleted_at' }
+                }
+              }
+            },
+            getTimestampsFeature() {
+              return {
+                hasTimestamps() {
+                  return false
+                }
+              }
+            }
+          }
+        },
+
+        getRecordName() {
+          return 'roles'
+        }
+      })
+    }
+
+    it('can not call restore if query is empty', async function() {
+      const handler = makeHandler()
+      makeQueryBuilder(handler).withTrashed()
+
+      const result = await handler.getQueryExecutor().restore()
+      expect(QueryLog.pull()).toHaveLength(0)
+      expect(result).toEqual(0)
+    })
+
+    it('can restore data by query builder, case 1', async function() {
+      let handler = makeHandler()
+      makeQueryBuilder(handler)
+        .onlyTrashed()
+        .where('name', 'role-0')
+
+      const result = await handler.getQueryExecutor().restore()
+      expect_query_log(
+        {
+          sql: "update `roles` set `deleted_at` = NULL where `deleted_at` is not null and `name` = 'role-0'",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"deleted_at":null}).then(...)',
+          action: 'restore'
+        },
+        result
+      )
+      expect(result).toEqual(1)
+
+      handler = makeHandler()
+      const count = await handler.getQueryExecutor().count()
+      expect(count).toEqual(1)
+    })
+
+    it('can restore data by query builder, case 2: multiple documents', async function() {
+      let handler = makeHandler()
+      makeQueryBuilder(handler)
+        .withTrashed()
+        .where('name', 'role-1')
+        .orWhere('name', 'role-2')
+        .orWhere('name', 'role-3')
+
+      const result = await handler.getQueryExecutor().restore()
+
+      expect_query_log(
+        {
+          sql:
+            "update `roles` set `deleted_at` = NULL where `name` = 'role-1' or `name` = 'role-2' or `name` = 'role-3'",
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"deleted_at":null}).then(...)',
+          action: 'restore'
+        },
+        result
+      )
+      expect(result).toEqual(3)
+
+      handler = makeHandler()
+      const count = await handler.getQueryExecutor().count()
+      expect(count).toEqual(4)
+    })
+
+    it('returns 0 if executeMode is disabled', async function() {
+      let handler = makeHandler()
+      makeQueryBuilder(handler)
+        .withTrashed()
+        .where('name', 'role-1')
+        .orWhere('name', 'role-2')
+        .orWhere('name', 'role-3')
+
+      const result = await handler
+        .getQueryExecutor()
+        .setExecuteMode('disabled')
+        .restore()
+
+      expect_query_log(
+        {
+          sql: undefined,
+          raw: 'KnexQueryBuilderHandler.getKnexQueryBuilder().update({"deleted_at":null}).then(...)',
+          action: 'restore'
+        },
+        result
+      )
+      expect(result).toEqual(0)
+
+      handler = makeHandler()
+      const count = await handler.getQueryExecutor().count()
+      expect(count).toEqual(4)
     })
   })
 

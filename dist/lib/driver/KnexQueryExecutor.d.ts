@@ -13,9 +13,10 @@ export declare class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBa
     first(): Promise<object | null | undefined>;
     count(): Promise<number>;
     readCountOutput(output: any): any;
-    update(data: Object): Promise<any>;
+    update(data: object, action?: string): Promise<any>;
     delete(): Promise<any>;
     hasAnyWhereStatement(query: any): boolean;
     restore(): Promise<any>;
     execute(): Promise<any>;
+    getKnexQueryBuilder(): Knex.QueryBuilder;
 }

@@ -14,7 +14,7 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
             return this.logger.sql(undefined).end([]);
         }
         return new Promise(resolve => {
-            const query = this.queryHandler.getKnexQueryBuilder();
+            const query = this.getKnexQueryBuilder();
             query.then(result => {
                 this.logger.sql(query.toQuery()).end(result);
                 resolve(result);
@@ -27,7 +27,7 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
             return this.logger.sql(undefined).end(undefined);
         }
         return new Promise(resolve => {
-            const query = this.queryHandler.getKnexQueryBuilder().limit(1);
+            const query = this.getKnexQueryBuilder().limit(1);
             query.then(result => {
                 // tslint:disable-next-line
                 const row = result && result.length !== 0 ? result[0] : null;
@@ -44,7 +44,7 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
             return this.logger.sql(undefined).end(0);
         }
         return new Promise(resolve => {
-            const query = this.queryHandler.getKnexQueryBuilder();
+            const query = this.getKnexQueryBuilder();
             query.clearSelect()['_clearGrouping']('order');
             query.count().then(output => {
                 resolve(this.logger.sql(query.toQuery()).end(this.readCountOutput(output)));
@@ -56,16 +56,16 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
         const result = typeof row['count(*)'] !== 'undefined' ? row['count(*)'] : 0;
         return result;
     }
-    async update(data) {
+    async update(data, action = 'update') {
         if (this.queryHandler.hasTimestamps()) {
             data[this.queryHandler.getTimestampsSetting().updatedAt] = najs_eloquent_1.MomentProvider.make().toDate();
         }
-        this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().update(', data, ').then(...)').action('update');
+        this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().update(', data, ').then(...)').action(action);
         if (!this.shouldExecute()) {
             return this.logger.sql(undefined).end(0);
         }
         return new Promise(resolve => {
-            const query = this.queryHandler.getKnexQueryBuilder();
+            const query = this.getKnexQueryBuilder();
             query.update(data).then(output => {
                 resolve(this.logger.sql(query.toQuery()).end(output));
             });
@@ -76,7 +76,7 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
             return 0;
         }
         this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)').action('delete');
-        const query = this.queryHandler.getKnexQueryBuilder();
+        const query = this.getKnexQueryBuilder();
         if (!this.hasAnyWhereStatement(query)) {
             return 0;
         }
@@ -97,7 +97,24 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
         }
         return false;
     }
-    async restore() { }
+    async restore() {
+        if (!this.queryHandler.hasSoftDeletes()) {
+            return 0;
+        }
+        const query = this.getKnexQueryBuilder();
+        if (!this.hasAnyWhereStatement(query)) {
+            return 0;
+        }
+        const fieldName = this.queryHandler.getSoftDeletesSetting().deletedAt;
+        const data = {
+            [fieldName]: this.queryHandler.getQueryConvention().getNullValueFor(fieldName)
+        };
+        return this.update(data, 'restore');
+    }
     async execute() { }
+    getKnexQueryBuilder() {
+        najs_eloquent_1.NajsEloquent.QueryBuilder.Shared.ExecutorUtils.addSoftDeleteConditionIfNeeded(this.queryHandler);
+        return this.queryHandler.getKnexQueryBuilder();
+    }
 }
 exports.KnexQueryExecutor = KnexQueryExecutor;

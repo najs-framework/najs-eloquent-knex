@@ -26,7 +26,7 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     }
 
     return new Promise(resolve => {
-      const query = this.queryHandler.getKnexQueryBuilder()
+      const query = this.getKnexQueryBuilder()
       query.then(result => {
         this.logger.sql(query.toQuery()).end(result)
         resolve(result)
@@ -41,7 +41,7 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     }
 
     return new Promise(resolve => {
-      const query = this.queryHandler.getKnexQueryBuilder().limit(1)
+      const query = this.getKnexQueryBuilder().limit(1)
       query.then(result => {
         // tslint:disable-next-line
         const row = result && result.length !== 0 ? result[0] : null
@@ -60,7 +60,7 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     }
 
     return new Promise(resolve => {
-      const query = this.queryHandler.getKnexQueryBuilder()
+      const query = this.getKnexQueryBuilder()
       query.clearSelect()['_clearGrouping']('order')
       query.count().then(output => {
         resolve(this.logger.sql(query.toQuery()).end(this.readCountOutput(output)))
@@ -74,18 +74,18 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     return result
   }
 
-  async update(data: Object): Promise<any> {
+  async update(data: object, action: string = 'update'): Promise<any> {
     if (this.queryHandler.hasTimestamps()) {
       data[this.queryHandler.getTimestampsSetting().updatedAt] = MomentProvider.make().toDate()
     }
 
-    this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().update(', data, ').then(...)').action('update')
+    this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().update(', data, ').then(...)').action(action)
     if (!this.shouldExecute()) {
       return this.logger.sql(undefined).end(0)
     }
 
     return new Promise(resolve => {
-      const query = this.queryHandler.getKnexQueryBuilder()
+      const query = this.getKnexQueryBuilder()
       query.update(data).then(output => {
         resolve(this.logger.sql(query.toQuery()).end(output))
       })
@@ -98,7 +98,7 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     }
 
     this.logger.raw('KnexQueryBuilderHandler.getKnexQueryBuilder().delete().then(...)').action('delete')
-    const query = this.queryHandler.getKnexQueryBuilder()
+    const query = this.getKnexQueryBuilder()
     if (!this.hasAnyWhereStatement(query)) {
       return 0
     }
@@ -123,7 +123,28 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     return false
   }
 
-  async restore(): Promise<any> {}
+  async restore(): Promise<any> {
+    if (!this.queryHandler.hasSoftDeletes()) {
+      return 0
+    }
+
+    const query = this.getKnexQueryBuilder()
+    if (!this.hasAnyWhereStatement(query)) {
+      return 0
+    }
+
+    const fieldName = this.queryHandler.getSoftDeletesSetting().deletedAt
+    const data = {
+      [fieldName]: this.queryHandler.getQueryConvention().getNullValueFor(fieldName)
+    }
+    return this.update(data, 'restore')
+  }
 
   async execute(): Promise<any> {}
+
+  getKnexQueryBuilder() {
+    NajsEloquentLib.QueryBuilder.Shared.ExecutorUtils.addSoftDeleteConditionIfNeeded(this.queryHandler)
+
+    return this.queryHandler.getKnexQueryBuilder()
+  }
 }
