@@ -17,6 +17,7 @@ export declare class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBa
     delete(): Promise<any>;
     hasAnyWhereStatement(query: any): boolean;
     restore(): Promise<any>;
+    native(handler: (knexQueryBuilder: Knex.QueryBuilder) => any): this;
     execute(): Promise<any>;
     getKnexQueryBuilder(): Knex.QueryBuilder;
 }

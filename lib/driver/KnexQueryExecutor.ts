@@ -140,7 +140,15 @@ export class KnexQueryExecutor extends NajsEloquentLib.Driver.ExecutorBase
     return this.update(data, 'restore')
   }
 
-  async execute(): Promise<any> {}
+  native(handler: (knexQueryBuilder: Knex.QueryBuilder) => any): this {
+    const query = this.getKnexQueryBuilder()
+    handler.call(query, query)
+    return this
+  }
+
+  async execute(): Promise<any> {
+    return this.get()
+  }
 
   getKnexQueryBuilder() {
     NajsEloquentLib.QueryBuilder.Shared.ExecutorUtils.addSoftDeleteConditionIfNeeded(this.queryHandler)

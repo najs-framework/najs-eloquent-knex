@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 require("jest");
+const Sinon = require("sinon");
 const najs_eloquent_1 = require("najs-eloquent");
 const util_1 = require("../util");
 const KnexQueryBuilderHandler_1 = require("../../lib/driver/KnexQueryBuilderHandler");
@@ -288,41 +289,39 @@ describe('MongodbRecordExecutor', function () {
             }, result);
             expect_match_user(result, dataset[5]);
         });
-        // it('can find data by .native() before using query functions of query builder', async function() {
-        //   const handler = makeQueryBuilderHandler('users')
-        //   const result = await makeQueryBuilder(handler)
-        //     .native(function(collection) {
-        //       return collection.findOne({
-        //         first_name: 'tony'
-        //       })
-        //     })
-        //     .execute()
-        //   expect_match_user(result, dataset[2])
-        // })
-        // it('can find data by native() after using query functions of query builder', async function() {
-        //   const handler = makeQueryBuilderHandler('users')
-        //   const result = await makeQueryBuilder(handler)
-        //     .where('age', 40)
-        //     .orWhere('age', 1000)
-        //     .native(function(collection, conditions) {
-        //       return collection.findOne(conditions, { sort: [['last_name', -1]] })
-        //     })
-        //     .execute()
-        //   expect_match_user(result, dataset[5])
-        // })
-        // it('can find data by native() and modified after using query functions of query builder', async function() {
-        //   const handler = makeQueryBuilderHandler('users')
-        //   const result = await await makeQueryBuilder(handler)
-        //     .where('age', 40)
-        //     .orWhere('age', 1000)
-        //     .native(function(collection) {
-        //       return collection.findOne({
-        //         first_name: 'thor'
-        //       })
-        //     })
-        //     .execute()
-        //   expect_match_user(result, dataset[3])
-        // })
+        it('can find data by .native() before using query functions of query builder', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            const result = await makeQueryBuilder(handler)
+                .native(function (query) {
+                return query.where('first_name', 'tony').limit(1);
+            })
+                .execute();
+            expect_match_user(result[0], dataset[2]);
+        });
+        it('can find data by .native() after using query functions of query builder', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            const result = await makeQueryBuilder(handler)
+                .where('age', 40)
+                .orWhere('age', 1000)
+                .native(function (query) {
+                return query.orderBy('last_name', 'desc');
+            })
+                .execute();
+            expect_match_user(result[0], dataset[5]);
+        });
+        it('can find data by .native() and modified after using query functions of query builder', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            const result = await await makeQueryBuilder(handler)
+                .where('age', 40)
+                .orWhere('age', 1000)
+                .native(function (query) {
+                return query.clearWhere().where({
+                    first_name: 'thor'
+                });
+            })
+                .execute();
+            expect_match_user(result[0], dataset[3]);
+        });
         it('returns an undefined if executeMode is disabled', async function () {
             const handler = makeQueryBuilderHandler('users');
             makeQueryBuilder(handler)
@@ -706,19 +705,19 @@ describe('MongodbRecordExecutor', function () {
             const result = await handler.getQueryExecutor().delete();
             expect(result).toEqual(0);
         });
-        // it('can delete by native() function', async function() {
-        //   const handler = makeQueryBuilderHandler('users')
-        //   const result = await makeQueryBuilder(handler)
-        //     .native(function(collection) {
-        //       return collection.deleteOne({})
-        //     })
-        //     .execute()
-        //   expect(result).toEqual({ n: 1, ok: 1 })
-        //   const count = await makeQueryBuilderHandler('users')
-        //     .getQueryExecutor()
-        //     .count()
-        //   expect(count).toEqual(0)
-        // })
+        it('can delete by native() function', async function () {
+            const handler = makeQueryBuilderHandler('users');
+            const result = await makeQueryBuilder(handler)
+                .native(function (query) {
+                return query.delete();
+            })
+                .execute();
+            expect(result).toEqual(1);
+            const count = await makeQueryBuilderHandler('users')
+                .getQueryExecutor()
+                .count();
+            expect(count).toEqual(0);
+        });
     });
     describe('.restore()', function () {
         it('does nothing if Model do not support SoftDeletes', async function () {
@@ -827,9 +826,30 @@ describe('MongodbRecordExecutor', function () {
         });
     });
     describe('.execute()', function () {
-        it('should work', async function () {
+        it('calls and returns .get()', async function () {
             const handler = makeQueryBuilderHandler('users');
-            await handler.getQueryExecutor().execute();
+            const executor = handler.getQueryExecutor();
+            const getStub = Sinon.stub(executor, 'get');
+            getStub.returns(Promise.resolve('anything'));
+            makeQueryBuilder(handler).where('test', 'true');
+            expect(await executor.execute()).toEqual('anything');
+            expect(getStub.calledWith()).toBe(true);
+        });
+    });
+    describe('.native()', function () {
+        it('simply calls given handler with knexQueryBuilder from .getKnexQueryBuilder, then returns itself', function () {
+            const handler = makeQueryBuilderHandler('users');
+            const executor = handler.getQueryExecutor();
+            const container = {
+                handler() { }
+            };
+            const spy = Sinon.spy(container, 'handler');
+            const stub = Sinon.stub(executor, 'getKnexQueryBuilder');
+            stub.returns('anything');
+            expect(executor.native(container.handler) === executor).toBe(true);
+            expect(stub.called).toBe(true);
+            expect(spy.calledWith('anything')).toBe(true);
+            expect(spy.lastCall.thisValue).toEqual('anything');
         });
     });
 });

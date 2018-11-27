@@ -111,7 +111,14 @@ class KnexQueryExecutor extends najs_eloquent_1.NajsEloquent.Driver.ExecutorBase
         };
         return this.update(data, 'restore');
     }
-    async execute() { }
+    native(handler) {
+        const query = this.getKnexQueryBuilder();
+        handler.call(query, query);
+        return this;
+    }
+    async execute() {
+        return this.get();
+    }
     getKnexQueryBuilder() {
         najs_eloquent_1.NajsEloquent.QueryBuilder.Shared.ExecutorUtils.addSoftDeleteConditionIfNeeded(this.queryHandler);
         return this.queryHandler.getKnexQueryBuilder();
