@@ -10,9 +10,9 @@ export type KnexQueryBuilderType<T> = KnexQueryBuilder<T> & IKnexBasicQuery & IK
 
 export class KnexQueryBuilder<T, H extends KnexQueryBuilderHandler = KnexQueryBuilderHandler> extends NajsEloquentLib
   .QueryBuilder.QueryBuilder<T, H> {
-  native(nativeCb: (queryBuilder: Knex.QueryBuilder) => any) {
+  native(handler: (queryBuilder: Knex.QueryBuilder) => any) {
     const queryBuilder = this.handler.getKnexQueryBuilder()
-    nativeCb.call(queryBuilder, queryBuilder)
+    handler.call(queryBuilder, queryBuilder)
 
     return this
   }

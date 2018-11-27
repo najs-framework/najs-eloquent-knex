@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const najs_eloquent_1 = require("najs-eloquent");
 class KnexQueryBuilder extends najs_eloquent_1.NajsEloquent
     .QueryBuilder.QueryBuilder {
-    native(nativeCb) {
+    native(handler) {
         const queryBuilder = this.handler.getKnexQueryBuilder();
-        nativeCb.call(queryBuilder, queryBuilder);
+        handler.call(queryBuilder, queryBuilder);
         return this;
     }
     toSqlQuery() {

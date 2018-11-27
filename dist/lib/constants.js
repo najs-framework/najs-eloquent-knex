@@ -5,6 +5,8 @@ exports.ClassNames = {
         KnexProvider: 'NajsEloquent.Provider.KnexProvider'
     },
     Driver: {
+        KnexDriver: 'NajsEloquent.Driver.KnexDriver',
+        KnexQueryBuilderFactory: 'NajsEloquent.Driver.Knex.KnexQueryBuilderFactory',
         KnexExecutorFactory: 'NajsEloquent.Driver.Knex.KnexExecutorFactory'
     },
     Knex: {

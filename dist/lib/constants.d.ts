@@ -3,6 +3,8 @@ export declare const ClassNames: {
         KnexProvider: string;
     };
     Driver: {
+        KnexDriver: string;
+        KnexQueryBuilderFactory: string;
         KnexExecutorFactory: string;
     };
     Knex: {
